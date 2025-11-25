@@ -30,24 +30,31 @@
   <router-link v-bind:to="'/lobby/' + newPollId">
     {{ uiLabels.participatePoll }}
   </router-link>
+
+
+
 </template>
 
 <script>
 import ResponsiveNav from '@/components/ResponsiveNav.vue';
 import io from 'socket.io-client';
+import GameCanvas from '../components/GameCanvas.vue';
+import CanvasTools from '../components/CanvasTools.vue';
 const socket = io("localhost:3000");
 
 export default {
   name: 'StartView',
   components: {
-    ResponsiveNav
+    ResponsiveNav,
+    GameCanvas,
+    CanvasTools
   },
   data: function () {
     return {
       uiLabels: {},
       newPollId: "",
-      lang: localStorage.getItem( "lang") || "en",
-      hideNav: true
+      lang: localStorage.getItem("lang") || "en",
+      hideNav: true,
     }
   },
   created: function () {

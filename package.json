@@ -6,6 +6,7 @@
     "dev:frontend": "vite",
     "dev:backend": "nodemon server/index.js",
     "dev": "concurrently 'npm:dev:frontend' 'npm:dev:backend'",
+    "dev-host": "concurrently \"npm run dev:frontend -- --host\" \"npm run dev:backend\"",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
@@ -23,6 +24,6 @@
     "eslint": "^9.13.0",
     "eslint-plugin-vue": "^9.29.0",
     "nodemon": "^3.1.7",
-    "vite": "^7.1.12"
+    "vite": "^6.4.1"
   }
 }
