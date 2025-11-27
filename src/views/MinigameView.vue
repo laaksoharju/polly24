@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <div v-if="context.isHost" class="container">
     <div class="title-bar">
       <h1>2.5D Racer</h1>
     </div>
@@ -14,18 +14,26 @@
       </div>
     </div>
   </div>
+  <div v-if="!context.isHost" class="client-container">
+    <RacingControllerView />
+  </div>
 </template>
 
 <script>
-import RacingView from "./RacingView.vue";
+import { LobbyContext } from "../models/LobbyContext";
+import RacingView from "./minigames/racing/RacingView.vue";
+import RacingControllerView from "./minigames/racing/RacingControllerView.vue";
 
 export default {
   name: "MinigameView",
 
+  props: {
+    context: LobbyContext,
+  },
   data() {
     return {};
   },
-  components: { RacingView },
+  components: { RacingView, RacingControllerView },
   async created() {},
 
   methods: {},
@@ -48,6 +56,13 @@ h1 {
   flex-direction: column;
   padding: 5rem;
   gap: 1rem;
+}
+
+.client-container {
+  box-sizing: border-box;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
 }
 
 .title-bar {

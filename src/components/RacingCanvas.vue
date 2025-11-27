@@ -1,6 +1,6 @@
 <template>
   <div>
-    <p>Pos: x: {{ car?.x?.toFixed(2) }} y: {{ car?.y?.toFixed(2) }}</p>
+    <p>Pos: x: {{ car?.x?.toFixed(2) }} y: {{ car?.y?.toFixed(2) }} Angle: {{ car?.angle?.toFixed(2) }}</p>
     <canvas ref="canvas"></canvas>
   </div>
 </template>
@@ -19,6 +19,10 @@ import trackCurve1URL from "@/assets/track_curve_1.png";
 import trackCurve2URL from "@/assets/track_curve_2.png";
 import trackCurve3URL from "@/assets/track_curve_3.png";
 import trackEmptyURL from "@/assets/track_empty.png";
+import { ROAD_WIDTH, TILE_SIZE } from "../views/minigames/racing/RacingView.vue";
+import { isOnTrack } from "../views/minigames/racing/RacingGameHelper";
+
+const IS_DEBUG_MODE = true;
 
 export default {
   name: "RacingCanvas",
@@ -33,7 +37,6 @@ export default {
   props: {
     car: Object,
     otherCars: Array,
-    place: Number,
     playerCount: Number,
     time: Number,
     track: Object,
@@ -81,8 +84,8 @@ export default {
       return { cameraX, cameraY };
     },
     generateTrackTexture(track, width, height) {
-      const imgW = width * 128;
-      const imgH = height * 128;
+      const imgW = width * TILE_SIZE;
+      const imgH = height * TILE_SIZE;
       const texCanvas = document.createElement("canvas");
       texCanvas.width = imgW;
       texCanvas.height = imgH;
@@ -92,25 +95,25 @@ export default {
         for (let x = 0; x < width; x++) {
           switch (track[y][x]) {
             case "#":
-              texCtx.drawImage(this.trackEmptyImg, 128 * x, 128 * y);
+              texCtx.drawImage(this.trackEmptyImg, TILE_SIZE * x, TILE_SIZE * y);
               break;
             case "─":
-              texCtx.drawImage(this.trackStraight0Img, 128 * x, 128 * y);
+              texCtx.drawImage(this.trackStraight0Img, TILE_SIZE * x, TILE_SIZE * y);
               break;
             case "│":
-              texCtx.drawImage(this.trackStraight1Img, 128 * x, 128 * y);
+              texCtx.drawImage(this.trackStraight1Img, TILE_SIZE * x, TILE_SIZE * y);
               break;
             case "┌":
-              texCtx.drawImage(this.trackCurve0Img, 128 * x, 128 * y);
+              texCtx.drawImage(this.trackCurve0Img, TILE_SIZE * x, TILE_SIZE * y);
               break;
             case "┐":
-              texCtx.drawImage(this.trackCurve1Img, 128 * x, 128 * y);
+              texCtx.drawImage(this.trackCurve1Img, TILE_SIZE * x, TILE_SIZE * y);
               break;
             case "┘":
-              texCtx.drawImage(this.trackCurve2Img, 128 * x, 128 * y);
+              texCtx.drawImage(this.trackCurve2Img, TILE_SIZE * x, TILE_SIZE * y);
               break;
             case "└":
-              texCtx.drawImage(this.trackCurve3Img, 128 * x, 128 * y);
+              texCtx.drawImage(this.trackCurve3Img, TILE_SIZE * x, TILE_SIZE * y);
               break;
           }
         }
@@ -312,16 +315,21 @@ export default {
       this.ctx.arc((this.car.x / this.trackImg.width) * minimapW, (this.car.y / this.trackImg.height) * minimapH, 3, 0, 2 * Math.PI);
       this.ctx.fill();
 
-      if (true /* DEBUG */) {
+      if (IS_DEBUG_MODE) {
         for (let i = 0; i < this.track.route.length; i++) {
-          this.ctx.fillStyle = "#ff0000a0";
+          //this.ctx.fillStyle = "#ff0000a0";
           const routeTile = this.track.route[i];
-          this.ctx.fillRect(routeTile.x * minimapTileSize, routeTile.y * minimapTileSize, minimapTileSize, minimapTileSize);
+          //this.ctx.fillRect(routeTile.x * minimapTileSize, routeTile.y * minimapTileSize, minimapTileSize, minimapTileSize);
           this.ctx.fillStyle = "white";
           this.ctx.textAlign = "center";
           this.ctx.textBaseline = "middle";
-          this.ctx.font = `${minimapTileSize}px 'VT323'`;
-          this.ctx.fillText(`${i + 1}`, (routeTile.x + 0.5) * minimapTileSize, (routeTile.y + 0.5) * minimapTileSize);
+          this.ctx.font = `${minimapTileSize / 2}px 'VT323'`;
+          this.ctx.fillText(`${i + 1}`, (routeTile.x + 0.5) * minimapTileSize, (routeTile.y + 0.4) * minimapTileSize);
+          this.ctx.fillText(
+            routeTile.direction == "north" ? "↑" : routeTile.direction == "south" ? "↓" : routeTile.direction == "west" ? "←" : "→",
+            (routeTile.x + 0.5) * minimapTileSize,
+            (routeTile.y + 0.7) * minimapTileSize
+          );
         }
 
         for (let i = 0; i < this.car.tilesStack.length; i++) {
@@ -334,6 +342,20 @@ export default {
           this.ctx.font = `${minimapTileSize}px 'VT323'`;
           this.ctx.fillText(`${i + 1}`, (routeTile.x + 0.5) * minimapTileSize, (routeTile.y + 0.5) * minimapTileSize);
         }
+
+        //this.ctx.fillStyle = "blue";
+        //for (let y = 0; y < minimapH; y++) {
+        //  for (let x = 0; x < minimapW; x++) {
+        //    const mapX = (x / minimapW) * this.track.width * TILE_SIZE;
+        //    const mapY = (y / minimapH) * this.track.height * TILE_SIZE;
+        //    if (isOnTrack(mapX, mapY, this.track.data, TILE_SIZE, ROAD_WIDTH)) {
+        //      this.ctx.fillStyle = "#ff000050";
+        //    } else {
+        //      this.ctx.fillStyle = "#00000050";
+        //    }
+        //    this.ctx.fillRect(x, y, 1, 1);
+        //  }
+        //}
       }
     },
     render() {
@@ -349,9 +371,10 @@ export default {
       this.ctx.fillStyle = "white";
       this.ctx.textAlign = "end";
       this.ctx.textBaseline = "top";
-      this.ctx.font = "50px 'VT323'";
-      this.ctx.fillText(`${this.place + 1}/${this.playerCount}`, this.canvasWidth - 10, 10);
-      this.ctx.fillText(`${formatTime(this.time)}`, this.canvasWidth - 10, 60);
+      this.ctx.font = "40px 'VT323'";
+      this.ctx.fillText(`Lap ${this.car.lap + 1}/3`, this.canvasWidth - 10, 5);
+      this.ctx.fillText(`Place ${this.car.place + 1}/${this.playerCount}`, this.canvasWidth - 10, 50);
+      this.ctx.fillText(`${formatTime(this.time)}`, this.canvasWidth - 10, 100);
     },
   },
 };

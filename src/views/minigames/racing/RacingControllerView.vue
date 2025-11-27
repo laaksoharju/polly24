@@ -1,6 +1,9 @@
 <template>
-  <div class="controller" :class="(useJoystick ? 'joystick-mode ' : 'gyro-mode ') + (isPortrait ? 'force-landscape' : '')">
-    <div v-if="useJoystick" class="joystick-container">
+  <div
+    class="controller"
+    :class="(mode == 'joystick' ? 'joystick-mode ' : mode == 'keyboard' ? 'keyboard-mode' : 'gyro-mode ') + (isPortrait ? 'force-landscape' : '')"
+  >
+    <div v-if="mode == 'joystick'" class="joystick-container">
       <div class="joystick-holder" @touchstart="onJoyStart" @touchmove.prevent="onJoyMove" @touchend="onJoyEnd">
         <div
           class="joystick"
@@ -13,6 +16,7 @@
     <div class="info">
       <div></div>
       <div>
+        <p>Mode: {{ mode }}</p>
         <p>A: {{ alpha?.toFixed(0) }} B: {{ beta?.toFixed(0) }} G: {{ gamma?.toFixed(0) }}</p>
         <p>Steer: {{ steer?.toFixed(2) }}</p>
         <p>Gas: {{ gasPressed }}</p>
@@ -20,11 +24,20 @@
       <div>
         <button @click="connect">Reconnect</button>
         <button @click="requestSensorPermission">Enable Motion</button>
-        <button @click="useJoystick = !useJoystick">{{ useJoystick ? "Gyro mode" : "Joystick mode" }}</button>
+        <button @click="mode = mode == 'gyro' ? 'joystick' : mode == 'joystick' ? 'keyboard' : 'gyro'">Switch mode</button>
       </div>
     </div>
-
-    <div class="pedals">
+    <div v-if="mode == 'keyboard'" class="keyboard-keys">
+      <div class="keyboard-row">
+        <p :class="`keyboard-key ${this.keys['w'] ? 'pressed' : ''}`">W</p>
+      </div>
+      <div class="keyboard-row">
+        <p :class="`keyboard-key ${this.keys['a'] ? 'pressed' : ''}`">A</p>
+        <p :class="`keyboard-key ${this.keys['s'] ? 'pressed' : ''}`">S</p>
+        <p :class="`keyboard-key ${this.keys['d'] ? 'pressed' : ''}`">D</p>
+      </div>
+    </div>
+    <div v-if="mode != 'keyboard'" class="pedals">
       <button class="pedal brake" @touchstart="brake(1)" @touchend="brake(0)">BRAKE</button>
       <button class="pedal gas" @touchstart="gas(1)" @touchend="gas(0)">GAS</button>
     </div>
@@ -42,8 +55,10 @@ export default {
   data() {
     return {
       socket: null,
-      useJoystick: true,
-
+      //useKeyboard: true,
+      //useJoystick: true,
+      mode: "keyboard",
+      keys: [],
       joystick: {
         active: false,
         startX: 0,
@@ -76,9 +91,13 @@ export default {
     window.matchMedia("(orientation: portrait)").addEventListener("change", (e) => {
       this.isPortrait = e.matches;
     });
+    window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("keyup", this.onKeyUp);
   },
   beforeUnmount() {
     window.removeEventListener("deviceorientation", this.handleOrientation);
+    window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("keyup", this.onKeyUp);
   },
   methods: {
     connect() {
@@ -189,6 +208,28 @@ export default {
       this.sendInput();
     },
 
+    onKeyDown(key) {
+      if (this.keys[key.key]) return;
+      this.keys[key.key] = true;
+      this.onKeyStateChanged();
+    },
+    onKeyUp(key) {
+      this.keys[key.key] = false;
+      this.onKeyStateChanged();
+    },
+
+    onKeyStateChanged() {
+      let steer = 0;
+
+      if (this.keys["a"]) steer -= 1;
+      if (this.keys["d"]) steer += 1;
+      this.steer = steer;
+      this.gasPressed = this.keys["w"] ? 1 : 0;
+      this.brakePressed = this.keys["s"] ? 1 : 0;
+
+      this.sendInput();
+    },
+
     sendInput() {
       this.socket.emit("marioInput", {
         steer: this.steer,
@@ -248,6 +289,31 @@ export default {
   height: 7rem;
   border-radius: 50%;
   background-color: #e63946;
+}
+
+.keyboard-keys {
+  place-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.keyboard-row {
+  display: flex;
+  margin: 0;
+  gap: 0;
+}
+.keyboard-key {
+  background: #484041;
+  width: 3rem;
+  aspect-ratio: 1;
+  align-content: center;
+  border-radius: 1rem;
+  gap: 0;
+  margin: 0;
+}
+
+.pressed {
+  background: #e63946;
 }
 
 .gyro-mode .pedals {

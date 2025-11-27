@@ -10,14 +10,17 @@ const io = new Server(httpServer, {
 // If you need to change how data is handled, check the Data.js file!
 
 import { Data } from "./Data.js";
+import { LobbyManager } from "./LobbyManager.js";
 
 //
 import { sockets } from "./sockets.js";
 
-let data = new Data();
+let lobbyManager = new LobbyManager(io);
 
 io.on("connection", function (socket) {
-  sockets(this, socket, data);
+  var address = socket.handshake.address;
+  console.log(`New connection ${socket.id} from ${address}`);
+  sockets(this, socket, lobbyManager);
 });
 
 const PORT = process.env.PORT || 3000;
