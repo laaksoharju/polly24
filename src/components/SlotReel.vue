@@ -18,10 +18,12 @@
 <script>
 export default {
   name: "SlotReel",
-  props: {},
+  props: {
+    symbols: Array,
+  },
   data() {
     return {
-      availableSymbols: ["✍️", "🍺", "🃏", "🎲", "🎱", "❓"],
+      //availableSymbols: ["✍️", "🍺", "🃏", "🎲", "🎱", "❓"],
       rotationAngle: 0,
       currentPos: 1,
       spinning: true,
@@ -37,7 +39,7 @@ export default {
       return ((n % m) + m) % m;
     },
     getSymbol(pos) {
-      return this.availableSymbols[this.mod(pos, this.availableSymbols.length)];
+      return this.symbols[this.mod(pos, this.symbols.length)];
     },
     spin(startTime, symbolsToRotate, msPerSymbol) {
       this.startTime = startTime;
@@ -65,7 +67,10 @@ export default {
       }
 
       this.rotationAngle = this.mod(totalAngle, anglesPerSymbol);
-      this.currentPos = this.mod(this.startPos + Math.floor(totalAngle / anglesPerSymbol), this.availableSymbols.length);
+      this.currentPos = this.mod(
+        this.startPos + Math.floor(totalAngle / anglesPerSymbol),
+        this.symbols.length
+      );
 
       requestAnimationFrame(this.animate);
     },

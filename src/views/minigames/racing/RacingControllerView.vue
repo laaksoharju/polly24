@@ -1,10 +1,21 @@
 <template>
   <div
     class="controller"
-    :class="(mode == 'joystick' ? 'joystick-mode ' : mode == 'keyboard' ? 'keyboard-mode' : 'gyro-mode ') + (isPortrait ? 'force-landscape' : '')"
+    :class="
+      (mode == 'joystick'
+        ? 'joystick-mode '
+        : mode == 'keyboard'
+        ? 'keyboard-mode'
+        : 'gyro-mode ') + (isPortrait ? 'force-landscape' : '')
+    "
   >
     <div v-if="mode == 'joystick'" class="joystick-container">
-      <div class="joystick-holder" @touchstart="onJoyStart" @touchmove.prevent="onJoyMove" @touchend="onJoyEnd">
+      <div
+        class="joystick-holder"
+        @touchstart="onJoyStart"
+        @touchmove.prevent="onJoyMove"
+        @touchend="onJoyEnd"
+      >
         <div
           class="joystick"
           :style="{
@@ -14,7 +25,6 @@
       </div>
     </div>
     <div class="info">
-      <div></div>
       <div>
         <p>Mode: {{ mode }}</p>
         <p>A: {{ alpha?.toFixed(0) }} B: {{ beta?.toFixed(0) }} G: {{ gamma?.toFixed(0) }}</p>
@@ -22,9 +32,12 @@
         <p>Gas: {{ gasPressed }}</p>
       </div>
       <div>
-        <button @click="connect">Reconnect</button>
         <button @click="requestSensorPermission">Enable Motion</button>
-        <button @click="mode = mode == 'gyro' ? 'joystick' : mode == 'joystick' ? 'keyboard' : 'gyro'">Switch mode</button>
+        <button
+          @click="mode = mode == 'gyro' ? 'joystick' : mode == 'joystick' ? 'keyboard' : 'gyro'"
+        >
+          Switch mode
+        </button>
       </div>
     </div>
     <div v-if="mode == 'keyboard'" class="keyboard-keys">
@@ -45,18 +58,13 @@
 </template>
 
 <script>
-import io from "socket.io-client";
-
-const DEG2RAD = Math.PI / 180;
+import { socket } from "../../../socket";
 
 export default {
   name: "RacingController",
 
   data() {
     return {
-      socket: null,
-      //useKeyboard: true,
-      //useJoystick: true,
       mode: "keyboard",
       keys: [],
       joystick: {
@@ -77,14 +85,11 @@ export default {
       steer: 0,
       gasPressed: 0,
       brakePressed: 0,
+      boost: 0,
     };
   },
 
-  created: function () {
-    this.socket = io();
-
-    this.socket.emit("joinMarioClient");
-  },
+  created: function () {},
 
   async mounted() {
     window.addEventListener("deviceorientation", this.handleRotation);
@@ -98,22 +103,22 @@ export default {
     window.removeEventListener("deviceorientation", this.handleOrientation);
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
+
+    this.exitLandscape();
   },
   methods: {
-    connect() {
-      this.socket.disconnect();
-      this.socket = io();
-      this.socket.emit("joinMarioClient");
-    },
     async enterLandscape() {
       try {
-        // FULLSCREEN FIRST
         await document.documentElement.requestFullscreen();
-
-        // MUST be inside the same user gesture
         await screen.orientation.lock("landscape");
-
-        console.log("Landscape lock OK");
+      } catch (err) {
+        console.warn("Orientation lock failed:", err);
+      }
+    },
+    async exitLandscape() {
+      try {
+        await document.exitFullscreen();
+        screen.orientation.unlock();
       } catch (err) {
         console.warn("Orientation lock failed:", err);
       }
@@ -134,7 +139,7 @@ export default {
       }
     },
     handleRotation(e) {
-      if (this.useJoystick) return;
+      if (this.mode != "gyro") return;
       this.alpha = e.alpha;
       this.beta = e.beta;
       this.gamma = e.gamma;
@@ -163,7 +168,7 @@ export default {
     },
 
     onJoyStart(e) {
-      if (!this.useJoystick) return;
+      if (this.mode != "joystick") return;
       const touch = e.touches[0];
       this.joystick.active = true;
       this.joystick.startX = touch.clientX;
@@ -171,7 +176,7 @@ export default {
     },
 
     onJoyMove(e) {
-      if (!this.useJoystick) return;
+      if (this.mode != "joystick") return;
       if (!this.joystick.active) return;
       const touch = e.touches[0];
 
@@ -200,7 +205,7 @@ export default {
     },
 
     onJoyEnd() {
-      if (!this.useJoystick) return;
+      if (this.mode != "joystick") return;
       this.joystick.active = false;
       this.joystick.x = 0;
       this.joystick.y = 0;
@@ -226,15 +231,18 @@ export default {
       this.steer = steer;
       this.gasPressed = this.keys["w"] ? 1 : 0;
       this.brakePressed = this.keys["s"] ? 1 : 0;
+      this.boost = this.keys[" "] ? 1 : 0;
 
       this.sendInput();
     },
 
     sendInput() {
-      this.socket.emit("marioInput", {
+      console.log("input");
+      socket.emit("racingInput", {
         steer: this.steer,
         gas: this.gasPressed,
         brake: this.brakePressed,
+        boost: this.boost,
       });
     },
   },
@@ -257,6 +265,9 @@ export default {
 }
 
 .joystick-mode {
+  width: 100vw;
+  height: 100vh;
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: 2fr 1fr 2fr;
 }
@@ -351,10 +362,10 @@ export default {
 .joystick-mode .info {
   display: grid;
   width: 100%;
+  height: 100%;
   grid-template-rows: 1fr 1fr 1fr;
   color: white;
   text-align: center;
-  padding-top: 1rem;
 }
 
 .gyro-mode .info {
@@ -363,7 +374,6 @@ export default {
   grid-template-columns: 1fr 1fr 1fr;
   color: white;
   text-align: center;
-  padding-top: 1rem;
 }
 
 .info button {

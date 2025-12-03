@@ -1,39 +1,45 @@
 <template>
   <div v-if="context.isHost" class="container">
     <div class="title-bar">
-      <h1>2.5D Racer</h1>
+      <h1 v-if="context.state.gameIndex == 0">2.5D Racer</h1>
+      <h1 v-if="context.state.gameIndex == 1">Questions game</h1>
+      <svg view-box="0 0 100 100">
+        <rect x="10" y="10" width="50" height="50" fill="green" />
+        <circle cx="5" cy="5" :r="tmp" fill="red" />
+      </svg>
+      <p>{{ tmp }}</p>
+      <input type="range" v-model="tmp" min="1" max="10" />
     </div>
     <div class="body-container">
       <div class="scoreboard-container">
-        <p>Player 1</p>
-        <p>Player 2</p>
-        <p>Player 3</p>
+        <p v-for="player in context.state.players">{{ player.name }}</p>
       </div>
       <div class="minigame-container">
-        <RacingView class="minigame" />
+        <RacingView v-if="context.state.gameIndex == 0" class="minigame" />
+        <KahootView v-if="context.state.gameIndex == 1" class="minigame" />
       </div>
     </div>
   </div>
   <div v-if="!context.isHost" class="client-container">
-    <RacingControllerView />
+    <RacingControllerView v-if="context.state.gameIndex == 0" class="minigame" />
+    <KahootPlayerView v-if="context.state.gameIndex == 1" class="minigame" />
   </div>
 </template>
 
 <script>
-import { LobbyContext } from "../models/LobbyContext";
 import RacingView from "./minigames/racing/RacingView.vue";
 import RacingControllerView from "./minigames/racing/RacingControllerView.vue";
+import { context } from "../context";
+import KahootView from "./minigames/kahoot/KahootView.vue";
+import KahootPlayerView from "./minigames/kahoot/KahootPlayerView.vue";
 
 export default {
   name: "MinigameView",
 
-  props: {
-    context: LobbyContext,
-  },
   data() {
-    return {};
+    return { context, tmp: 0 };
   },
-  components: { RacingView, RacingControllerView },
+  components: { RacingView, RacingControllerView, KahootView, KahootPlayerView },
   async created() {},
 
   methods: {},
@@ -77,6 +83,7 @@ h1 {
 
 .body-container {
   flex-grow: 1;
+  min-height: 0;
   display: flex;
   gap: 2rem;
   justify-content: center;

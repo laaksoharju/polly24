@@ -8,21 +8,30 @@
       </div>
       <div class="main-body">
         <div class="reels">
-          <svg class="reel-arrow reel-arrow-left" viewBox="0 0 100 100" width="100%" height="100%">
+          <svg
+            class="reel-arrow reel-arrow-left"
+            viewBox="0 0 100 100"
+            width="100%"
+            height="100%"
+          >
             <polygon points="0,50 25,0 100,50 25,100" fill="red" />
           </svg>
-          <SlotReel ref="reel1" />
-          <SlotReel ref="reel2" />
-          <SlotReel ref="reel3" />
-          <svg class="reel-arrow reel-arrow-right" viewBox="0 0 100 100" width="100%" height="100%">
+          <SlotReel ref="reel1" :symbols="symbols" />
+          <SlotReel ref="reel2" :symbols="symbols" />
+          <SlotReel ref="reel3" :symbols="symbols" />
+          <svg
+            class="reel-arrow reel-arrow-right"
+            viewBox="0 0 100 100"
+            width="100%"
+            height="100%"
+          >
             <polygon points="0,50 25,0 100,50 25,100" fill="red" />
           </svg>
         </div>
         <div class="display">
-          <span class="label">DRINK BEER!!!</span>
+          <span class="label">{{ text }}</span>
         </div>
       </div>
-      <button class="spin-button" @click="spin">SPIN</button>
     </div>
   </div>
 </template>
@@ -36,34 +45,64 @@ export default {
   components: {
     SlotReel,
   },
-
+  props: { text: String, symbols: Array },
   data() {
     return {};
   },
-
+  emits: ["spinFinished"],
   methods: {
-    spin() {
-      console.log("SPIN");
+    mod(n, m) {
+      return ((n % m) + m) % m;
+    },
+    spin(symbolIndex = 0) {
+      const MIN_SYMBOLS_1 = 50;
+      const MIN_SYMBOLS_2 = 75;
+      const MIN_SYMBOLS_3 = 100;
+      const MS_PER_SYMBOL = 25;
 
-      const symbolIndex = 1;
+      const symbolsToRotate1 =
+        MIN_SYMBOLS_1 +
+        this.mod(
+          this.$refs.reel1.currentPos - MIN_SYMBOLS_1,
+          this.symbols.length
+        ) -
+        symbolIndex;
+      const symbolsToRotate2 =
+        MIN_SYMBOLS_2 +
+        this.mod(
+          this.$refs.reel2.currentPos - MIN_SYMBOLS_2,
+          this.symbols.length
+        ) -
+        symbolIndex;
+      const symbolsToRotate3 =
+        MIN_SYMBOLS_3 +
+        this.mod(
+          this.$refs.reel3.currentPos - MIN_SYMBOLS_3,
+          this.symbols.length
+        ) -
+        symbolIndex;
 
-      console.log("Current spin 1: " + this.$refs.reel1.currentPos);
-      console.log("Current spin 2: " + this.$refs.reel2.currentPos);
-      console.log("Current spin 3: " + this.$refs.reel3.currentPos);
+      this.$refs.reel1.spin(Date.now(), symbolsToRotate1, MS_PER_SYMBOL);
+      this.$refs.reel2.spin(Date.now(), symbolsToRotate2, MS_PER_SYMBOL);
+      this.$refs.reel3.spin(Date.now(), symbolsToRotate3, MS_PER_SYMBOL);
 
-      const symbolsToRotate1 = this.$refs.reel1.availableSymbols.length * 5 + (this.$refs.reel1.currentPos - symbolIndex);
-      const symbolsToRotate2 = this.$refs.reel2.availableSymbols.length * 6 + (this.$refs.reel2.currentPos - symbolIndex);
-      const symbolsToRotate3 = this.$refs.reel3.availableSymbols.length * 7 + (this.$refs.reel3.currentPos - symbolIndex);
+      const time =
+        Math.max(symbolsToRotate1, symbolsToRotate2, symbolsToRotate3) *
+        MS_PER_SYMBOL;
 
-      this.$refs.reel1.spin(Date.now(), symbolsToRotate1, 25);
-      this.$refs.reel2.spin(Date.now(), symbolsToRotate2, 25);
-      this.$refs.reel3.spin(Date.now(), symbolsToRotate3, 25);
+      setTimeout(() => {
+        this.$emit("spinFinished", symbolIndex);
+      }, time);
     },
   },
 };
 </script>
 
 <style scoped>
+div {
+  box-shadow: #2e0f00 1 1;
+}
+
 .slot-machine {
   display: flex;
   flex-direction: column;
@@ -71,12 +110,6 @@ export default {
 }
 
 .slot-background {
-  /*background: url(https://t3.ftcdn.net/jpg/04/72/67/22/360_F_472672271_upGkFlomQbzdTQ6G4T8jZCYxZELhrhle.jpg);*/
-  background-image: url("https://emv586mw5ad.exactdn.com/en/blog/wp-content/uploads/2024/09/A-gold-slot-machine-with-three-red-sevens-Online-jackpot-slots.jpg?strip=all&lossy=1&ssl=1");
-  background-position: center -80px;
-  background-size: 870px;
-  width: 700px;
-  height: 500px;
   justify-items: center;
   align-content: center;
 }

@@ -1,32 +1,16 @@
 function sockets(io, socket, lobbyManager) {
-  //socket.on("joinMarioHost", function () {
-  //  console.log("host");
-  //  data.marioGame.hostSocket = socket;
-  //});
-  //
-  //socket.on("joinMarioClient", function () {
-  //  console.log("client");
-  //  data.marioGame.clients.push(socket);
-  //
-  //  if (data.marioGame.hostSocket != null) {
-  //    console.log("CLIENT");
-  //    data.marioGame.hostSocket.emit("marioClient", socket.id);
-  //  }
-  //});
-
-  socket.on("disconnect", function () {
-    console.log("client disconnect: " + socket.id);
-    //if (data.marioGame.hostSocket != null) {
-    //  data.marioGame.hostSocket.emit("marioClientDisconnect", socket.id);
-    //}
+  socket.on("checkLobbyCode", function (lobbyCode) {
+    const lobby = lobbyManager.getLobby(lobbyCode);
+    console.log(`Check lobby with code ${lobbyCode}`);
+    console.log(lobby);
+    if (lobby == undefined) {
+      socket.emit("checkLobbyCodeResponse", { available: false, reason: "no_lobby" });
+    } else if (lobby.phase != "lobby") {
+      socket.emit("checkLobbyCodeResponse", { available: true, reason: "started" });
+    } else {
+      socket.emit("checkLobbyCodeResponse", { available: true });
+    }
   });
-
-  //socket.on("marioInput", function (input) {
-  //  if (data.marioGame.hostSocket != null) {
-  //    data.marioGame.hostSocket.emit("marioInput", input, socket.id);
-  //  }
-  //});
-
   socket.on("joinLobby", function (lobbyCode, name) {
     lobbyManager.getLobby(lobbyCode)?.onPlayerJoined(socket, name);
   });

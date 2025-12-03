@@ -1,32 +1,56 @@
 import { Player } from "./models/Player.js";
+import { ServerLobbyContext } from "./models/ServerLobbyContext.js";
+import { RacingGame } from "./minigames/RacingGame.js";
+import { KahootGame } from "./minigames/KahootGame.js";
 
 export class Lobby {
   constructor(io, lobbyId) {
-    this.io = io;
-    this.id = lobbyId;
+    this.context = new ServerLobbyContext(io, lobbyId);
     this.currentGame = null;
     this.phase = "lobby";
-    this.players = [];
   }
 
   onPlayerJoined(socket, name) {
-    socket.join(this.id + "_PLAYERS");
-    socket.data.lobbyId = this.id;
-    socket.emit("joinLobbyResponse", this.id);
-    this.players.push(new Player(name, socket.id));
+    console.log(`${name} joined lobby '${this.context.lobbyId}'`);
+    socket.join(this.context.lobbyId + "_PLAYERS");
+    socket.data.lobbyId = this.context.lobbyId;
+    socket.emit("joinLobbyResponse", this.context.lobbyId);
+
+    const player = new Player(name, socket.id, socket);
+
+    this.context.players.push(player);
     this.broadcastLobbyState();
+    if (this.phase == "game") {
+      this.currentGame?.onPlayerJoined(player);
+      this.currentGame?.registerListeners(player.socket);
+    }
   }
 
   onHostJoined(socket) {
-    socket.join(this.id + "_HOST");
-    socket.data.lobbyId = this.id;
-    socket.emit("joinLobbyHostResponse", this.id);
+    socket.join(this.context.lobbyId + "_HOST");
+    socket.data.lobbyId = this.context.lobbyId;
+
+    socket.on("startGame", () => this.start());
+    socket.on("advancePhase", () => this.advancePhase());
+
+    socket.on("startSpin", () => this.startSpin());
+
+    socket.emit("joinLobbyHostResponse", this.context.lobbyId);
     this.broadcastLobbyState();
   }
 
   onPlayerDisconnected(playerId) {
-    this.players = this.players.filter((x) => x.id != playerId);
-    this.broadcastLobbyState();
+    const playersToRemove = this.context.players.splice(
+      this.context.players.findIndex((x) => x.id != playerId)
+    );
+    if (playersToRemove.length != 0) {
+      this.broadcastLobbyState();
+      if (this.phase == "game") {
+        this.currentGame?.onPlayerDisconnected(playersToRemove[0]);
+        if (playersToRemove[0].socket)
+          this.currentGame?.unregisterListeners(playersToRemove[0].socket);
+      }
+    }
   }
 
   start() {
@@ -37,35 +61,92 @@ export class Lobby {
     this.startGameSelection();
   }
 
-  startGameSelection() {
-    const gameIndex = 0; /* Select random minigame */
+  advancePhase() {
+    switch (this.phase) {
+      case "slot":
+        this.startLoadingScreen();
+        break;
+      case "loading":
+        this.startMinigame();
+        break;
+      case "game":
+        this.currentGame?.stop();
+        this.startResultScreen();
+        break;
+      case "result":
+        this.startGameSelection();
+        break;
+    }
+  }
 
-    setTimeout(this.startLoadingScreen, 3000);
+  startGameSelection() {
+    this.phase = "slot";
+    const gameIndex = 0; /* Select random minigame */
+    this.broadcastLobbyState();
+  }
+
+  startSpin() {
+    const gameIndex = Math.floor(Math.random() * 2);
+
+    this.context.io.to(this.context.lobbyId + "_PLAYERS").emit("startSpin", gameIndex);
+    this.context.io.to(this.context.lobbyId + "_HOST").emit("startSpin", gameIndex);
+
+    this.selectGame(gameIndex);
+  }
+
+  selectGame(gameIndex) {
+    console.log(`Selecting game: ${gameIndex}`);
+    this.gameIndex = gameIndex;
+    switch (gameIndex) {
+      case 0:
+        this.currentGame = new RacingGame();
+        break;
+      case 1:
+        this.currentGame = new KahootGame();
+        break;
+    }
   }
 
   startLoadingScreen() {
-    setTimeout(this.startLoadingScreen, 10000);
+    this.phase = "loading";
+    this.broadcastLobbyState();
   }
 
   startMinigame() {
-    this.currentGame.onFinished = this.onMinigameFinished;
+    this.phase = "game";
+    this.broadcastLobbyState();
+
+    this.currentGame.context = this.context;
+    for (let player of this.context.players) {
+      this.currentGame?.onPlayerJoined(player);
+      this.currentGame.registerListeners(player.socket);
+    }
+
+    this.currentGame.onFinished = () => this.startResultScreen();
     this.currentGame.start();
   }
 
-  onMinigameFinished() {}
-
-  /* COMMUNICATION */
-
-  setState() {}
+  startResultScreen() {
+    console.log("Entering result phase");
+    this.phase = "result";
+    this.broadcastLobbyState();
+  }
 
   broadcastLobbyState() {
     const state = {
-      players: this.players,
+      lobbyId: this.context.lobbyId,
+      players: this.context.players.map((x) => {
+        return {
+          name: x.name,
+        };
+      }),
       phase: this.phase,
+      gameIndex: this.gameIndex,
     };
-
-    this.io.to(this.id + "_PLAYERS").emit("updateLobbyState", state);
-    this.io.to(this.id + "_HOST").emit("updateLobbyState", state);
+    console.log(`Broadcasting state`);
+    console.log(state);
+    this.context.io.to(this.context.lobbyId + "_PLAYERS").emit("updateLobbyState", state);
+    this.context.io.to(this.context.lobbyId + "_HOST").emit("updateLobbyState", state);
   }
 
   /*

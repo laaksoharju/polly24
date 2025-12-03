@@ -1,14 +1,23 @@
 import { Lobby } from "./Lobby.js";
-import { RacingGame } from "./RacingGame.js";
+import { RacingGame } from "./minigames/RacingGame.js";
+import { KahootGame } from "./minigames/KahootGame.js";
 
 export class LobbyManager {
   constructor(io) {
     this.io = io;
 
-    const testLobby = new Lobby(io, "test");
-    testLobby.currentGame = new RacingGame();
-    testLobby.phase = "game";
-    this.lobbies = [testLobby];
+    const raceLobby = new Lobby(io, "race");
+    raceLobby.currentGame = new RacingGame(true);
+    raceLobby.gameIndex = 0;
+    raceLobby.startMinigame();
+
+    const kahootLobby = new Lobby(io, "kahoot");
+    kahootLobby.selectGame(1);
+    kahootLobby.startMinigame();
+
+    const lobby = new Lobby(io, "lobby");
+
+    this.lobbies = [lobby, raceLobby, kahootLobby];
   }
 
   createLobby() {
@@ -21,9 +30,7 @@ export class LobbyManager {
     this.lobbies.push(lobby);
   }
 
-  joinLobby() {}
-
   getLobby(lobbyId) {
-    return this.lobbies.find((x) => x.id == lobbyId);
+    return this.lobbies.find((x) => x.context.lobbyId == lobbyId);
   }
 }
